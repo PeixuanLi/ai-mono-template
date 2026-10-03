@@ -6,9 +6,22 @@ import { withTempRepo } from './test-util.ts'
 import { check } from './verify-symlink.ts'
 
 describe('verify-symlink', () => {
-  it('CLAUDE.md 缺失时报错并给出修复命令', async () => {
-    await withTempRepo({ 'AGENTS.md': '# 规则' }, async (dir) => {
+  it('AGENTS.md 缺失时报错并给出修复命令', async () => {
+    await withTempRepo({}, async (dir) => {
       const v = await check(dir)
+      expect(v).toHaveLength(1)
+      expect(v[0]).toContain('git checkout -- AGENTS.md')
+    })
+  })
+
+  it('CLAUDE.md 缺失或悬空时报错并给出修复命令', async () => {
+    await withTempRepo({ 'AGENTS.md': '# 规则' }, async (dir) => {
+      let v = await check(dir)
+      expect(v).toHaveLength(1)
+      expect(v[0]).toContain('ln -s AGENTS.md CLAUDE.md')
+
+      symlinkSync('不存在.md', join(dir, 'CLAUDE.md'))
+      v = await check(dir)
       expect(v).toHaveLength(1)
       expect(v[0]).toContain('ln -s AGENTS.md CLAUDE.md')
     })
@@ -21,10 +34,12 @@ describe('verify-symlink', () => {
     })
   })
 
-  it.runIf(process.platform !== 'win32')('symlink 指向别处时报错', async () => {
-    await withTempRepo({ 'AGENTS.md': '# 规则', 'other.md': 'x' }, async (dir) => {
+  it.runIf(process.platform !== 'win32')('symlink 指向别处时报错,即使内容一致', async () => {
+    await withTempRepo({ 'AGENTS.md': '# 规则', 'other.md': '# 规则' }, async (dir) => {
       symlinkSync('other.md', join(dir, 'CLAUDE.md'))
-      expect(await check(dir)).toHaveLength(1)
+      const v = await check(dir)
+      expect(v).toHaveLength(1)
+      expect(v[0]).toContain('symlink')
     })
   })
 
