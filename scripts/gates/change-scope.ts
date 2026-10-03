@@ -10,10 +10,10 @@ import { isMain } from './cli.ts'
 export function recommend(files: string[]): string[] {
   const cmds: string[] = []
   const pkgs = [...new Set(files.filter((f) => f.startsWith('packages/')).map((f) => f.split('/')[1]))]
-  for (const pkg of pkgs) if (pkg) cmds.push(`pnpm exec vitest run packages/${pkg}`)
+  for (const pkg of pkgs) if (pkg) cmds.push(`pnpm exec vitest run packages/${pkg} --passWithNoTests`)
 
   if (files.some((f) => f.startsWith('scripts/'))) cmds.push('pnpm run verify && pnpm run test')
-  if (files.some((f) => f.startsWith('docs/'))) cmds.push('pnpm run verify:docs')
+  if (files.some((f) => f.startsWith('docs/') || f === 'budgets.json')) cmds.push('pnpm run verify:docs')
   if (files.some((f) => f.startsWith('.agents/notes/'))) cmds.push('pnpm run verify:notes')
   if (files.some((f) => f.startsWith('.github/') || f === 'lefthook.yml' || f === 'AGENTS.md')) {
     cmds.push('pnpm run verify')
@@ -38,11 +38,11 @@ function resolveBase(): string {
   return ''
 }
 
-/** 读取命令行 --base <ref> 显式基线;未提供或缺值时为空串,回退自动探测。 */
-function explicitBase(): string {
+/** 读取命令行 --base <ref> 显式基线;未提供该 flag 时为 undefined,提供了但缺值时为空串。 */
+function explicitBase(): string | undefined {
   const argv = process.argv.slice(2)
   const i = argv.indexOf('--base')
-  return i >= 0 ? (argv[i + 1] ?? '') : ''
+  return i === -1 ? undefined : (argv[i + 1] ?? '')
 }
 
 function changedFiles(base: string): string[] {
@@ -59,7 +59,12 @@ function changedFiles(base: string): string[] {
 }
 
 if (isMain(import.meta.url)) {
-  const base = explicitBase() || resolveBase()
+  const explicit = explicitBase()
+  if (explicit !== undefined && !refExists(explicit)) {
+    console.error(`--base ${explicit} 不是可解析的 git ref;拼写检查后重试`)
+    process.exit(1)
+  }
+  const base = explicit ?? resolveBase()
   if (!base) {
     console.log('找不到 origin/main 或 main 基线;可用 --base <ref> 指定,或先创建分支')
     process.exit(0)
