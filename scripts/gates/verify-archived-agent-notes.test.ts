@@ -103,6 +103,20 @@ describe('verify-archived-agent-notes', () => {
     )
   })
 
+  it('manifest 键含反斜杠时拒绝(Windows 分隔符不可作文件名)', async () => {
+    await withTempRepo(
+      {
+        '.agents/notes/archived/manifest.json': JSON.stringify({ files: { '..\\outside.md': 'x' } }),
+        'outside.md': 'x',
+      },
+      async (dir) => {
+        const v = await check(dir)
+        expect(v).toHaveLength(1)
+        expect(v[0]).toContain('不含路径')
+      },
+    )
+  })
+
   it('登记项是目录时返回违规而非抛 EISDIR', async () => {
     await withTempRepo(
       {

@@ -31,7 +31,7 @@ function loadManifest(archivedDir: string): { manifest?: Manifest; violation?: s
     return { violation: 'archived/manifest.json 不是 { "files": { ... } } 结构;修复:git checkout -- .agents/notes/archived/manifest.json' }
   }
   for (const [name, sha] of Object.entries(manifest.files)) {
-    if (name.includes('/') || typeof sha !== 'string') {
+    if (name.includes('/') || name.includes('\\') || typeof sha !== 'string') {
       return { violation: `archived/manifest.json 的 files 键必须是不含路径的文件名与 sha256 字符串(发现:${name});修复:git checkout -- .agents/notes/archived/manifest.json` }
     }
   }
