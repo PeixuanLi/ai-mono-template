@@ -1,7 +1,8 @@
-import { execFileSync } from 'node:child_process'
+import { execFileSync, spawnSync } from 'node:child_process'
 import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { dirname, join } from 'node:path'
+import process from 'node:process'
 
 /**
  * 在系统临时目录创建一次性仓库夹具,写入给定文件后执行 fn,结束后删除。
@@ -36,4 +37,14 @@ export function gitCommitAll(dir: string, message = 'fixture'): void {
   execFileSync('git', ['config', 'user.name', 'fixture'], { cwd: dir, stdio: 'ignore' })
   execFileSync('git', ['add', '-A'], { cwd: dir, stdio: 'ignore' })
   execFileSync('git', ['-c', 'commit.gpgsign=false', 'commit', '-m', message], { cwd: dir, stdio: 'ignore' })
+}
+
+/**
+ * 以平台正确的命令名 spawn pnpm(测试用;win32 需 pnpm.cmd,否则 spawn ENOENT → status null 假红)。
+ * @param args pnpm 参数
+ * @param opts 透传 spawnSync 选项
+ */
+export function spawnPnpm(args: string[], opts: { cwd: string; encoding: 'utf8' }): ReturnType<typeof spawnSync> {
+  const command = process.platform === 'win32' ? 'pnpm.cmd' : 'pnpm'
+  return spawnSync(command, args, opts)
 }

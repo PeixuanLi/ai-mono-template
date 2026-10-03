@@ -1,4 +1,3 @@
-import { spawnSync } from 'node:child_process'
 import { mkdtempSync, rmSync, symlinkSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { dirname, join } from 'node:path'
@@ -6,6 +5,7 @@ import { fileURLToPath } from 'node:url'
 import process from 'node:process'
 import { describe, expect, it } from 'vitest'
 import { isMain } from './cli.ts'
+import { spawnPnpm } from './test-util.ts'
 
 const repoRoot = join(dirname(fileURLToPath(import.meta.url)), '..', '..')
 
@@ -31,7 +31,7 @@ describe('runMain 直接执行形态(回归:symlink 路径下必须仍然执法)
           gate,
           `import { isMain, runMain } from ${JSON.stringify(cliUrl)}\n\nconst check = async () => ['demo 违规']\n\nif (isMain(import.meta.url)) await runMain(check)\n`,
         )
-        const result = spawnSync('pnpm', ['exec', 'tsx', gate], { cwd: repoRoot, encoding: 'utf8' })
+        const result = spawnPnpm(['exec', 'tsx', gate], { cwd: repoRoot, encoding: 'utf8' })
         expect(result.status).toBe(1)
         expect(result.stderr).toContain('demo 违规')
         // 违规路径下 runMain 只写 stderr(stdout 为空),名字出现在 "gate-demo 未通过" 一行。

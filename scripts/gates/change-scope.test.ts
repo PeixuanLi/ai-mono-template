@@ -1,8 +1,8 @@
-import { spawnSync } from 'node:child_process'
 import { dirname, join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { describe, expect, it } from 'vitest'
 import { recommend } from './change-scope.ts'
+import { spawnPnpm } from './test-util.ts'
 
 const repoRoot = join(dirname(fileURLToPath(import.meta.url)), '..', '..')
 
@@ -47,7 +47,7 @@ describe('recommend(改动文件 → 最小检查集)', () => {
 
 describe('CLI --base 校验', () => {
   it('显式 --base 不是可解析 ref 时响亮失败(exit 1)', () => {
-    const r = spawnSync('pnpm', ['exec', 'tsx', 'scripts/gates/change-scope.ts', '--base', 'bogus-ref-xyz'], { cwd: repoRoot, encoding: 'utf8' })
+    const r = spawnPnpm(['exec', 'tsx', 'scripts/gates/change-scope.ts', '--base', 'bogus-ref-xyz'], { cwd: repoRoot, encoding: 'utf8' })
     expect(r.status).toBe(1)
     expect(r.stderr).toContain('bogus-ref-xyz')
   }, 30000)

@@ -1,9 +1,9 @@
-import { spawnSync } from 'node:child_process'
 import { readdirSync } from 'node:fs'
 import { dirname, join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { describe, expect, it } from 'vitest'
 import { findUnregistered, selectGates, REGISTRY, type GateEntry } from './run-gates.ts'
+import { spawnPnpm } from './test-util.ts'
 
 const repoRoot = join(dirname(fileURLToPath(import.meta.url)), '..', '..')
 
@@ -52,7 +52,7 @@ describe('真实 REGISTRY 与目录一致', () => {
 
 describe('模式覆盖(last-wins)', () => {
   it('pnpm 转发的 --mode 覆盖脚本自带旗标', () => {
-    const r = spawnSync('pnpm', ['run', 'verify:notes', '--', '--mode', 'docs'], { cwd: repoRoot, encoding: 'utf8' })
+    const r = spawnPnpm(['run', 'verify:notes', '--', '--mode', 'docs'], { cwd: repoRoot, encoding: 'utf8' })
     expect(r.status).toBe(0)
     expect(r.stdout).toContain('run-gates(docs):1')
   }, 30000)
