@@ -18,5 +18,5 @@
 ## 形态约定
 
 - 文件以恰好一个换行结尾;中文与英文/数字之间加空格。
-- 字数预算见 budgets.json(docs 150 行/笔记 120 行),只紧不松。
+- 字数预算见 budgets.json,只紧不松。
 - docs 与笔记的分工见 .agents/notes/README.md:docs 答 what/how,笔记答 why/why-not。

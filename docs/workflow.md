@@ -3,8 +3,8 @@
 ## 分支与 PR
 
 - 分支从 main 切出,命名 `feat-<简述>` / `fix-<简述>`。
-- 一个 PR 一个关注点;改制度文本(AGENTS.md/门禁/CI)与对应代码同一个 PR。
-- PR 模板自带评审三查:世界验证、笔记保鲜、slop/CoT 痕迹。
+- 一个 PR 一个关注点;制度文本与对应代码同 PR(规则见 [AGENTS.md](../AGENTS.md) 治理先于代码)。
+- PR 模板自带评审三查(世界验证、笔记保鲜、slop/CoT 痕迹),另含笔记取舍与 stack 注记两项注记。
 
 ## stacked PR
 

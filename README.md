@@ -33,4 +33,4 @@ git checkout -b feat-first
 
 ## 长期
 
-- 直推 main 不经 PR 棘轮执法(锚点比对只在 PR 事件生效);为 main 开分支保护(见 docs/workflow.md)。
+- 直推 main 不受棘轮执法保护;为 main 开分支保护(见 docs/workflow.md)。

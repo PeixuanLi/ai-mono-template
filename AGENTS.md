@@ -26,7 +26,7 @@ pnpm run build        # 构建全部包
 - **保鲜义务**:改代码的 PR 必须同步更新受影响的 docs 与笔记;禁止在笔记里追加变更史,改结论 = 新笔记 + 旧笔记归档互链。
 - **删除是常规运维**:被取代或失去决策含量的笔记直接删或归档;归档即冻结,永不再改。
 - **验证世界,而非代理自述**:测试断言外部可观察状态(返回值、文件内容、退出码),不断言实现细节或 mock 交互自述。见 [docs/testing.md](docs/testing.md)。
-- **本地窄,CI 全**:本地只跑与改动相关的最小检查(`pnpm run scope` 给推荐);全量矩阵由 CI 负责;已通过的检查不重复跑。
+- **本地窄,CI 全**:本地只跑与改动相关的最小检查(`pnpm run scope` 给推荐);全量矩阵由 CI 负责;已通过的检查不重复跑(分界见 [docs/testing.md](docs/testing.md))。
 - **写作规范**:文档与笔记只留结论与事实,不留推理过程;禁 slop(重复规则、实现状态标注、强调通胀);判据是"HEAD 上的读者不访问任何会话记录,能否解析每个引用、核实每句话"。见 [docs/writing.md](docs/writing.md)。
 - **凡被违反两次的约定,升级为门禁**:把约定变成会让 CI 变红的命令,流程见 `.agents/skills/add-gate/SKILL.md`。
 - **stack PR**:依赖式 PR 用 GitHub 原生 stack;重写必带 `--force-with-lease`。见 [docs/workflow.md](docs/workflow.md)。
