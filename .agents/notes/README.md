@@ -12,7 +12,7 @@ proposed(提案中)→ implemented(已落地);rejected = 评估后否决;archive
 - 必含"## 考虑过的替代方案":不记录打败过什么,决策就会被反复重审。
 - 保鲜:改代码的 PR 同步更新受影响笔记;改结论 = 新笔记 + 旧笔记归档互链,禁止追加变更史。
 - 删除是常规运维:失去决策含量的笔记直接删;有历史价值的归档(登记 manifest,冻结)。
-- 新笔记从 templates/note-template.md 起步,创建流程见 .agents/skills/create-agent-note/SKILL.md。
+- 新笔记从 templates/note-template.md 起步,替换全部占位符(标题、date 等),创建流程见 .agents/skills/create-agent-note/SKILL.md。
 
 ## 索引
 
