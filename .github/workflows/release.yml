@@ -1,0 +1,29 @@
+name: Release
+
+# 双闸第二闸:打包演练已在每个 PR 的 CI 完成;这里是人工按下的发布按钮。
+on:
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: 要发布的 tag(如 v0.1.0)
+        required: true
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.tag }}
+          fetch-depth: 0
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - name: 校验 tag 已合入 main
+        run: git merge-base --is-ancestor origin/main HEAD
+      - run: pnpm run verify
+      - run: pnpm run build
+      - run: pnpm -r exec npm pack --dry-run
