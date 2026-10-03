@@ -1,0 +1,11 @@
+{
+  "name": "@tmpl/example",
+  "version": "0.0.0",
+  "type": "module",
+  "main": "./lib/index.js",
+  "types": "./lib/index.d.ts",
+  "files": ["lib"],
+  "scripts": {
+    "build": "tsc -p tsconfig.build.json"
+  }
+}
