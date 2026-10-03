@@ -1,6 +1,8 @@
-import { readdirSync } from 'node:fs'
 import { spawnSync } from 'node:child_process'
+import { readdirSync } from 'node:fs'
+import { join } from 'node:path'
 import process from 'node:process'
+import { fileURLToPath } from 'node:url'
 import { isMain } from './cli.ts'
 
 export type Mode = 'all' | 'fast' | 'docs' | 'notes'
@@ -17,6 +19,9 @@ export const REGISTRY: GateEntry[] = [
   { name: 'verify-doc-budgets', modes: ['docs'] },
 ]
 
+/** 仓库根(由本文件位置推导,不依赖调用者 cwd)。 */
+const repoRoot = fileURLToPath(new URL('../../', import.meta.url))
+
 /** 按模式选择要执行的门禁名(all = 全部注册门禁)。 */
 export function selectGates(mode: Mode, registry: GateEntry[]): string[] {
   if (mode === 'all') return registry.map((g) => g.name)
@@ -29,9 +34,24 @@ export function findUnregistered(gatesFiles: string[], registry: GateEntry[]): s
   return gatesFiles.filter((f) => /^verify-.*\.ts$/.test(f) && !f.endsWith('.test.ts') && !registered.has(f))
 }
 
+/** 解析 --mode:最后一个生效(pnpm 把用户参数追加在脚本自带旗标之后);支持 --mode=X;缺值单独提示。 */
 function parseMode(argv: string[]): Mode {
-  const i = argv.indexOf('--mode')
-  const value = i >= 0 ? argv[i + 1] : 'all'
+  let value: string | undefined
+  let seen = false
+  for (let i = 0; i < argv.length; i++) {
+    if (argv[i] === '--mode') {
+      value = argv[i + 1]
+      seen = true
+    } else if (argv[i]?.startsWith('--mode=')) {
+      value = argv[i].slice('--mode='.length)
+      seen = true
+    }
+  }
+  if (!seen) return 'all'
+  if (value === undefined) {
+    console.error('--mode 需要一个值;可用:all / fast / docs / notes')
+    process.exit(1)
+  }
   if (value === 'all' || value === 'fast' || value === 'docs' || value === 'notes') return value
   console.error(`未知模式 ${value};可用:all / fast / docs / notes`)
   process.exit(1)
@@ -39,8 +59,9 @@ function parseMode(argv: string[]): Mode {
 
 if (isMain(import.meta.url)) {
   const mode = parseMode(process.argv)
+  const gatesDir = join(repoRoot, 'scripts', 'gates')
 
-  const unregistered = findUnregistered(readdirSync('scripts/gates'), REGISTRY)
+  const unregistered = findUnregistered(readdirSync(gatesDir), REGISTRY)
   if (unregistered.length > 0) {
     for (const f of unregistered) {
       console.error(`✗ scripts/gates/${f} 存在但未注册进 run-gates 的 REGISTRY;未注册的门禁永远不会跑`)
@@ -48,10 +69,16 @@ if (isMain(import.meta.url)) {
     process.exit(1)
   }
 
+  const command = process.platform === 'win32' ? 'pnpm.cmd' : 'pnpm'
   const selected = selectGates(mode, REGISTRY)
   let failed = 0
   for (const name of selected) {
-    const result = spawnSync('pnpm', ['exec', 'tsx', `scripts/gates/${name}.ts`], { stdio: 'inherit' })
+    const result = spawnSync(command, ['exec', 'tsx', `scripts/gates/${name}.ts`], { cwd: repoRoot, stdio: 'inherit' })
+    if (result.error) {
+      console.error(`无法执行 pnpm(${name}): ${result.error.message}`)
+      failed++
+      continue
+    }
     if (result.status !== 0) failed++
   }
   console.log(

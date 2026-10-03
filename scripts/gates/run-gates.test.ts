@@ -1,5 +1,11 @@
+import { spawnSync } from 'node:child_process'
+import { readdirSync } from 'node:fs'
+import { dirname, join } from 'node:path'
+import { fileURLToPath } from 'node:url'
 import { describe, expect, it } from 'vitest'
-import { findUnregistered, selectGates, type GateEntry } from './run-gates.ts'
+import { findUnregistered, selectGates, REGISTRY, type GateEntry } from './run-gates.ts'
+
+const repoRoot = join(dirname(fileURLToPath(import.meta.url)), '..', '..')
 
 const registry: GateEntry[] = [
   { name: 'verify-symlink', modes: ['fast'] },
@@ -36,4 +42,18 @@ describe('findUnregistered(未接线自检)', () => {
     )
     expect(un).toEqual(['verify-foo.ts'])
   })
+})
+
+describe('真实 REGISTRY 与目录一致', () => {
+  it('仓库内不存在未注册门禁', () => {
+    expect(findUnregistered(readdirSync(join(repoRoot, 'scripts', 'gates')), REGISTRY)).toEqual([])
+  })
+})
+
+describe('模式覆盖(last-wins)', () => {
+  it('pnpm 转发的 --mode 覆盖脚本自带旗标', () => {
+    const r = spawnSync('pnpm', ['run', 'verify:notes', '--', '--mode', 'docs'], { cwd: repoRoot, encoding: 'utf8' })
+    expect(r.status).toBe(0)
+    expect(r.stdout).toContain('run-gates(docs):1')
+  }, 30000)
 })
