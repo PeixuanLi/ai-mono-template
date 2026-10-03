@@ -17,4 +17,15 @@ describe('withTempRepo', () => {
     })
     expect(existsSync(captured)).toBe(false)
   })
+
+  it('fn 抛出时夹具目录仍被删除', async () => {
+    let captured = ''
+    await expect(
+      withTempRepo({ 'a.txt': 'x' }, async (dir) => {
+        captured = dir
+        throw new Error('boom')
+      }),
+    ).rejects.toThrow('boom')
+    expect(existsSync(captured)).toBe(false)
+  })
 })
