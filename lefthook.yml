@@ -1,0 +1,13 @@
+# 本地只做快检查;全量门禁矩阵由 CI 负责(.github/workflows/ci.yml)。
+# 原则:钩子慢会被 --no-verify 绕过——往这里加东西前先想清楚。
+pre-commit:
+  commands:
+    whitespace:
+      run: git diff --cached --check
+    gates-fast:
+      run: pnpm run verify:fast
+
+pre-push:
+  commands:
+    typecheck:
+      run: pnpm run typecheck

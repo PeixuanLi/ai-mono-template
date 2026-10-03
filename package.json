@@ -10,6 +10,7 @@
     "test": "vitest run",
     "typecheck": "tsc --noEmit -p tsconfig.json",
     "lint": "eslint .",
+    "prepare": "lefthook install",
     "verify": "tsx scripts/gates/run-gates.ts --mode all",
     "verify:fast": "tsx scripts/gates/run-gates.ts --mode fast",
     "verify:docs": "tsx scripts/gates/run-gates.ts --mode docs",
