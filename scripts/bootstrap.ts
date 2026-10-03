@@ -7,7 +7,6 @@ import {
   readFileSync,
   readdirSync,
   rmSync,
-  statSync,
   symlinkSync,
   writeFileSync,
 } from 'node:fs'
@@ -24,14 +23,14 @@ export function renameScope(content: string, from: string, to: string): string {
   return content.split(`${from}/`).join(`${to}/`)
 }
 
-/** 收集仓库内全部文本文件路径(跳过依赖与构建产物)。 */
+/** 收集仓库内全部文本文件路径(跳过依赖与构建产物;符号链接不遍历——接线不是内容,与 walkMd 语义对齐)。 */
 export function walkTextFiles(dir: string): string[] {
   const out: string[] = []
-  for (const entry of readdirSync(dir)) {
-    if (SKIP_DIR.has(entry)) continue
-    const p = join(dir, entry)
-    if (statSync(p).isDirectory()) out.push(...walkTextFiles(p))
-    else if (TEXT_EXT.has(entry.slice(entry.lastIndexOf('.')))) out.push(p)
+  for (const entry of readdirSync(dir, { withFileTypes: true })) {
+    if (SKIP_DIR.has(entry.name)) continue
+    const p = join(dir, entry.name)
+    if (entry.isDirectory()) out.push(...walkTextFiles(p))
+    else if (TEXT_EXT.has(entry.name.slice(entry.name.lastIndexOf('.')))) out.push(p)
   }
   return out
 }
@@ -150,7 +149,7 @@ export async function bootstrap(opts: BootstrapOptions): Promise<void> {
 
   log('⑥ pnpm install')
   if (run(['install']) !== 0) {
-    throw new Error('pnpm install 失败;检查 node(>=22.19)与 pnpm 版本')
+    throw new Error('pnpm install 失败;检查 node(>=22.19)与 pnpm 版本;修复后重跑 pnpm bootstrap(幂等)')
   }
   if (run(['run', 'prepare']) !== 0) {
     throw new Error('pnpm run prepare 失败(lefthook 钩子安装);可手动重跑 pnpm run prepare')
@@ -167,9 +166,13 @@ export async function bootstrap(opts: BootstrapOptions): Promise<void> {
 if (isMain(import.meta.url)) {
   const argv = process.argv.slice(2)
   const scopeIdx = argv.indexOf('--scope')
-  const scope = scopeIdx >= 0 ? argv[scopeIdx + 1] : undefined
+  const rawScope = scopeIdx >= 0 ? argv[scopeIdx + 1] : undefined
+  if (scopeIdx >= 0 && (rawScope === undefined || !/^@[\w.-]+$/.test(rawScope))) {
+    console.error(`--scope 需要 @组织名 形式(如 @acme);收到:${rawScope ?? '(缺值)'}`)
+    process.exit(1)
+  }
   const keepExample = !argv.includes('--no-example')
-  bootstrap({ dir: process.cwd(), scope, keepExample }).catch((e: unknown) => {
+  bootstrap({ dir: process.cwd(), scope: rawScope, keepExample }).catch((e: unknown) => {
     console.error(`bootstrap 失败:${e instanceof Error ? e.message : String(e)}`)
     process.exit(1)
   })

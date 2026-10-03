@@ -5,10 +5,12 @@ import { describe, expect, it } from 'vitest'
 import { withTempRepo } from './gates/test-util.ts'
 import { bootstrap, ensureClaudeSymlink, renameScope, repairSkillsWiring } from './bootstrap.ts'
 
+const OLD_SCOPE = '@tmpl'
+
 describe('renameScope', () => {
   it('替换包前缀;前后相同时为幂等空操作', () => {
-    expect(renameScope('{ "name": "@tmpl/example" }', '@tmpl', '@acme')).toBe('{ "name": "@acme/example" }')
-    expect(renameScope('@tmpl/x @tmpl/y', '@tmpl', '@tmpl')).toBe('@tmpl/x @tmpl/y')
+    expect(renameScope(`{ "name": "${OLD_SCOPE}/example" }`, OLD_SCOPE, '@acme')).toBe('{ "name": "@acme/example" }')
+    expect(renameScope(`${OLD_SCOPE}/x ${OLD_SCOPE}/y`, OLD_SCOPE, OLD_SCOPE)).toBe(`${OLD_SCOPE}/x ${OLD_SCOPE}/y`)
   })
 })
 
@@ -55,7 +57,7 @@ describe('bootstrap', () => {
       {
         'AGENTS.md': '# r',
         'CLAUDE.md': '# r',
-        'packages/example/package.json': '{ "name": "@tmpl/example", "version": "0.0.0" }',
+        'packages/example/package.json': `{ "name": "${OLD_SCOPE}/example", "version": "0.0.0" }`,
       },
       async (dir) => {
         await bootstrap({
@@ -89,6 +91,19 @@ describe('bootstrap', () => {
   it('目标不是模板仓库时响亮失败', async () => {
     await withTempRepo({ 'README.md': '空' }, async (dir) => {
       await expect(bootstrap({ dir, run: () => 0, log: () => {} })).rejects.toThrow('不是模板仓库')
+    })
+  })
+
+  it('install 失败时响亮失败', async () => {
+    await withTempRepo({ 'AGENTS.md': '# r' }, async (dir) => {
+      await expect(bootstrap({ dir, run: () => 1, log: () => {} })).rejects.toThrow('pnpm install 失败')
+    })
+  })
+
+  it('门禁未全绿时响亮失败', async () => {
+    await withTempRepo({ 'AGENTS.md': '# r' }, async (dir) => {
+      const run = (args: string[]) => (args[1] === 'verify' ? 1 : 0)
+      await expect(bootstrap({ dir, run, log: () => {} })).rejects.toThrow('门禁未全绿')
     })
   })
 })
