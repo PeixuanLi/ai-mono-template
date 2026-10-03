@@ -1,32 +1,51 @@
 import { execSync } from 'node:child_process'
 import { createHash } from 'node:crypto'
-import { existsSync, readFileSync, readdirSync } from 'node:fs'
-import { join } from 'node:path'
+import { existsSync, readFileSync, statSync } from 'node:fs'
+import { join, relative } from 'node:path'
 import { isMain, runMain } from './cli.ts'
+import { walkMd } from './fs-util.ts'
 
 interface Manifest {
   files: Record<string, string>
 }
 
-/** 读取 manifest;缺失返回空对象,JSON 损坏返回违规而非抛异常。 */
+/** 校验已解析对象是否为 { files: 文件名→sha256 } 形态;不是则返回 undefined。 */
+function validateManifest(parsed: unknown): Manifest | undefined {
+  if (typeof parsed !== 'object' || parsed === null) return undefined
+  const files = (parsed as { files?: unknown }).files
+  if (typeof files !== 'object' || files === null || Array.isArray(files)) return undefined
+  return { files: files as Record<string, string> }
+}
+
 function loadManifest(archivedDir: string): { manifest?: Manifest; violation?: string } {
   const p = join(archivedDir, 'manifest.json')
   if (!existsSync(p)) return {}
+  let parsed: unknown
   try {
-    return { manifest: JSON.parse(readFileSync(p, 'utf8')) as Manifest }
+    parsed = JSON.parse(readFileSync(p, 'utf8'))
   } catch {
     return { violation: 'archived/manifest.json 不是合法 JSON;修复:git checkout -- .agents/notes/archived/manifest.json' }
   }
+  const manifest = validateManifest(parsed)
+  if (!manifest) {
+    return { violation: 'archived/manifest.json 不是 { "files": { ... } } 结构;修复:git checkout -- .agents/notes/archived/manifest.json' }
+  }
+  for (const [name, sha] of Object.entries(manifest.files)) {
+    if (name.includes('/') || typeof sha !== 'string') {
+      return { violation: `archived/manifest.json 的 files 键必须是不含路径的文件名与 sha256 字符串(发现:${name});修复:git checkout -- .agents/notes/archived/manifest.json` }
+    }
+  }
+  return { manifest }
 }
 
-/** 读取 git HEAD 版本的 manifest 作为棘轮基线;无 git 历史或文件不存在时返回空基线。 */
+/** 读取 git HEAD 版本的 manifest 作为棘轮基线;无 git 历史、文件不存在或历史版本坏形态时返回空基线。 */
 function previousManifest(repoRoot: string): Manifest {
   try {
     const out = execSync('git show HEAD:.agents/notes/archived/manifest.json', {
       cwd: repoRoot,
       stdio: ['ignore', 'pipe', 'ignore'],
     })
-    return JSON.parse(out.toString()) as Manifest
+    return validateManifest(JSON.parse(out.toString())) ?? { files: {} }
   } catch {
     return { files: {} }
   }
@@ -34,7 +53,8 @@ function previousManifest(repoRoot: string): Manifest {
 
 /**
  * 校验归档冻结:归档文件 sha256 与 manifest 一致;manifest 相对 git 上一版只增不减;
- * archived/ 下的笔记必须登记。归档 = 历史文物,永不修改。
+ * archived/ 下的笔记(含嵌套)必须登记。归档 = 历史文物,永不修改。
+ * 字节级冻结依赖仓库 .gitattributes 的 eol=lf;放宽它会让 Windows 检出产生不可修复的假阳。
  * @param repoRoot 仓库根目录
  * @returns 中文违规清单,空数组表示通过
  */
@@ -51,8 +71,8 @@ export async function check(repoRoot: string): Promise<string[]> {
 
   for (const [name, sha] of Object.entries(manifest.files)) {
     const file = join(archivedDir, name)
-    if (!existsSync(file)) {
-      violations.push(`manifest 登记的 ${name} 已不存在;归档条目只增不减,误删请用 git 恢复`)
+    if (!existsSync(file) || !statSync(file).isFile()) {
+      violations.push(`manifest 登记的 ${name} 已不存在或不是普通文件;归档条目只增不减,误删请用 git 恢复`)
       continue
     }
     const actual = createHash('sha256').update(readFileSync(file)).digest('hex')
@@ -61,9 +81,10 @@ export async function check(repoRoot: string): Promise<string[]> {
     }
   }
 
-  for (const f of readdirSync(archivedDir)) {
-    if (f.endsWith('.md') && !(f in manifest.files)) {
-      violations.push(`archived/${f} 未登记进 manifest.json;走 archive-agent-note 技能完成登记`)
+  for (const file of walkMd(archivedDir)) {
+    const name = relative(archivedDir, file)
+    if (!(name in manifest.files)) {
+      violations.push(`archived/${name} 未登记进 manifest.json;走 archive-agent-note 技能完成登记`)
     }
   }
 

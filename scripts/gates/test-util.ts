@@ -1,4 +1,4 @@
-import { execSync } from 'node:child_process'
+import { execFileSync } from 'node:child_process'
 import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { dirname, join } from 'node:path'
@@ -25,11 +25,15 @@ export async function withTempRepo(
   }
 }
 
-/** 在 dir 初始化 git 仓库并把现有全部文件提交为一次提交(棘轮类门禁测试用)。 */
+/**
+ * 在 dir 初始化 git 仓库并把现有全部文件提交为一次提交(棘轮类门禁测试用)。
+ * @param dir 夹具仓库根目录
+ * @param message 提交信息,默认 'fixture'
+ */
 export function gitCommitAll(dir: string, message = 'fixture'): void {
-  execSync('git init -b main', { cwd: dir, stdio: 'ignore' })
-  execSync('git config user.email fixture@test', { cwd: dir, stdio: 'ignore' })
-  execSync('git config user.name fixture', { cwd: dir, stdio: 'ignore' })
-  execSync('git add -A', { cwd: dir, stdio: 'ignore' })
-  execSync(`git commit -m ${JSON.stringify(message)}`, { cwd: dir, stdio: 'ignore' })
+  execFileSync('git', ['init', '-b', 'main'], { cwd: dir, stdio: 'ignore' })
+  execFileSync('git', ['config', 'user.email', 'fixture@test'], { cwd: dir, stdio: 'ignore' })
+  execFileSync('git', ['config', 'user.name', 'fixture'], { cwd: dir, stdio: 'ignore' })
+  execFileSync('git', ['add', '-A'], { cwd: dir, stdio: 'ignore' })
+  execFileSync('git', ['-c', 'commit.gpgsign=false', 'commit', '-m', message], { cwd: dir, stdio: 'ignore' })
 }

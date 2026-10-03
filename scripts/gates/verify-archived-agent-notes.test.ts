@@ -76,4 +76,59 @@ describe('verify-archived-agent-notes', () => {
       },
     )
   })
+
+  it('manifest 是合法 JSON 但结构不对时返回违规而非抛异常', async () => {
+    await withTempRepo(
+      { '.agents/notes/archived/manifest.json': '{}' },
+      async (dir) => {
+        const v = await check(dir)
+        expect(v).toHaveLength(1)
+        expect(v[0]).toContain('结构')
+      },
+    )
+  })
+
+  it('manifest 键含路径时拒绝,不得越出 archived/', async () => {
+    await withTempRepo(
+      {
+        '.agents/notes/archived/manifest.json': JSON.stringify({ files: { '../outside.md': 'x' } }),
+        'outside.md': 'x',
+      },
+      async (dir) => {
+        const v = await check(dir)
+        expect(v).toHaveLength(1)
+        expect(v[0]).toContain('不含路径')
+      },
+    )
+  })
+
+  it('登记项是目录时返回违规而非抛 EISDIR', async () => {
+    await withTempRepo(
+      {
+        '.agents/notes/archived/sub/.keep': '',
+        '.agents/notes/archived/manifest.json': JSON.stringify({ files: { sub: 'x' } }),
+      },
+      async (dir) => {
+        const v = await check(dir)
+        expect(v).toHaveLength(1)
+        expect(v[0]).toContain('不是普通文件')
+      },
+    )
+  })
+
+  it('嵌套未登记笔记同样被点名', async () => {
+    await withTempRepo(
+      {
+        '.agents/notes/archived/old.md': archivedNote,
+        '.agents/notes/archived/sub/deep.md': archivedNote,
+      },
+      async (dir) => {
+        writeFileSync(join(dir, '.agents/notes/archived/manifest.json'), manifestOf(dir, 'old.md'))
+        const v = await check(dir)
+        expect(v).toHaveLength(1)
+        expect(v[0]).toContain('sub/deep.md')
+        expect(v[0]).toContain('未登记')
+      },
+    )
+  })
 })
