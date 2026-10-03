@@ -69,6 +69,7 @@ describe('bootstrap', () => {
         expect(JSON.parse(readFileSync(join(dir, 'packages/example/package.json'), 'utf8')).name).toBe('@acme/example')
         expect(existsSync(join(dir, '.git'))).toBe(true)
         expect(cmds).toEqual([['install'], ['run', 'prepare'], ['run', 'verify']])
+        expect(lstatSync(join(dir, 'CLAUDE.md')).isSymbolicLink()).toBe(true)
       },
     )
   })
