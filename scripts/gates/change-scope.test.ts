@@ -21,6 +21,7 @@ describe('recommend(改动文件 → 最小检查集)', () => {
       'pnpm run verify && pnpm run test',
       'pnpm run verify:docs',
       'pnpm run verify:notes',
+      'pnpm run typecheck',
     ])
   })
 

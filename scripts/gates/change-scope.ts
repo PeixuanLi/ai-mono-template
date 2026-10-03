@@ -18,8 +18,7 @@ export function recommend(files: string[]): string[] {
   if (files.some((f) => f.startsWith('.github/') || f === 'lefthook.yml' || f === 'AGENTS.md')) {
     cmds.push('pnpm run verify')
   }
-  // typecheck 只由包内 TS 改动触发;scripts 改动已升级为全量回归,docs 与笔记不涉及类型。
-  if (files.some((f) => f.startsWith('packages/') && f.endsWith('.ts'))) cmds.push('pnpm run typecheck')
+  if (files.some((f) => f.endsWith('.ts'))) cmds.push('pnpm run typecheck')
   return [...new Set(cmds)]
 }
 
