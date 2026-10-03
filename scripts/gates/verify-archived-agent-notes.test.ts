@@ -1,3 +1,4 @@
+import { execFileSync } from 'node:child_process'
 import { createHash } from 'node:crypto'
 import { readFileSync, rmSync, writeFileSync } from 'node:fs'
 import { join } from 'node:path'
@@ -130,5 +131,23 @@ describe('verify-archived-agent-notes', () => {
         expect(v[0]).toContain('未登记')
       },
     )
+  })
+
+  it('manifest 棘轮锚点含 origin/main:已提交的删除仍被抓(CI 形态)', async () => {
+    await withTempRepo({ '.agents/notes/archived/old.md': archivedNote, '.agents/notes/archived/new.md': archivedNote }, async (dir) => {
+      writeFileSync(join(dir, '.agents/notes/archived/manifest.json'), manifestOf(dir, 'old.md'))
+      const manifest = JSON.parse(manifestOf(dir, 'old.md'))
+      manifest.files['new.md'] = createHash('sha256').update(archivedNote).digest('hex')
+      writeFileSync(join(dir, '.agents/notes/archived/manifest.json'), JSON.stringify(manifest))
+      gitCommitAll(dir)
+      execFileSync('git', ['update-ref', 'refs/remotes/origin/main', 'HEAD'], { cwd: dir, stdio: 'ignore' })
+
+      delete manifest.files['new.md']
+      rmSync(join(dir, '.agents/notes/archived/new.md'))
+      writeFileSync(join(dir, '.agents/notes/archived/manifest.json'), JSON.stringify(manifest))
+      gitCommitAll(dir, 'shrink')
+      const v = await check(dir)
+      expect(v.some((x) => x.includes('只增不改') && x.includes('new.md'))).toBe(true)
+    })
   })
 })

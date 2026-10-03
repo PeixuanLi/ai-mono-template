@@ -1,3 +1,4 @@
+import { execFileSync } from 'node:child_process'
 import { writeFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { describe, expect, it } from 'vitest'
@@ -85,5 +86,25 @@ describe('verify-doc-budgets', () => {
         expect(v[0]).toContain('结构')
       },
     )
+  })
+
+  it('棘轮锚点含 origin/main:已提交的放宽仍被抓(CI 形态)', async () => {
+    await withTempRepo({ 'budgets.json': budgets, 'docs/architecture.md': lines(10) }, async (dir) => {
+      gitCommitAll(dir)
+      execFileSync('git', ['update-ref', 'refs/remotes/origin/main', 'HEAD'], { cwd: dir, stdio: 'ignore' })
+      writeFileSync(join(dir, 'budgets.json'), JSON.stringify({ docs: 200, notes: 120 }))
+      gitCommitAll(dir, 'loosen')
+      const v = await check(dir)
+      expect(v.some((x) => x.includes('只许收紧'))).toBe(true)
+    })
+  })
+
+  it('锚点版本坏形态时响亮报错而非静默跳过', async () => {
+    await withTempRepo({ 'budgets.json': '{broken', 'docs/architecture.md': lines(10) }, async (dir) => {
+      gitCommitAll(dir)
+      writeFileSync(join(dir, 'budgets.json'), budgets)
+      const v = await check(dir)
+      expect(v.some((x) => x.includes('锚点 HEAD') && x.includes('不是合法 JSON'))).toBe(true)
+    })
   })
 })

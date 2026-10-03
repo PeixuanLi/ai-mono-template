@@ -1,7 +1,7 @@
-import { execSync } from 'node:child_process'
 import { existsSync, readFileSync } from 'node:fs'
 import { join, relative } from 'node:path'
 import { isMain, runMain } from './cli.ts'
+import { readFileAt, RATCHET_REFS } from './git-util.ts'
 import { walkMd } from './fs-util.ts'
 
 interface Budgets {
@@ -10,6 +10,13 @@ interface Budgets {
 }
 
 const LIFECYCLE = ['proposed', 'implemented', 'rejected', 'archived'] as const
+
+/** 判定已解析对象是否为合法预算(docs/notes 均为非负整数)。 */
+function isBudgets(parsed: unknown): parsed is Budgets {
+  if (typeof parsed !== 'object' || parsed === null) return false
+  const { docs, notes } = parsed as { docs?: unknown; notes?: unknown }
+  return Number.isInteger(docs) && Number.isInteger(notes) && (docs as number) >= 0 && (notes as number) >= 0
+}
 
 function loadBudgets(repoRoot: string): { budgets?: Budgets; violation?: string } {
   const p = join(repoRoot, 'budgets.json')
@@ -20,26 +27,36 @@ function loadBudgets(repoRoot: string): { budgets?: Budgets; violation?: string 
   } catch {
     return { violation: 'budgets.json 不是合法 JSON;修复:git checkout -- budgets.json' }
   }
-  if (typeof parsed !== 'object' || parsed === null) {
-    return { violation: 'budgets.json 不是 { "docs": 行数, "notes": 行数 } 结构;修复:git checkout -- budgets.json' }
+  if (!isBudgets(parsed)) {
+    return { violation: 'budgets.json 不是 { "docs": 行数, "notes": 行数 } 结构(非负整数);修复:git checkout -- budgets.json' }
   }
-  const { docs, notes } = parsed as { docs?: unknown; notes?: unknown }
-  if (typeof docs !== 'number' || typeof notes !== 'number' || docs < 0 || notes < 0) {
-    return { violation: 'budgets.json 不是 { "docs": 行数, "notes": 行数 } 结构;修复:git checkout -- budgets.json' }
-  }
-  return { budgets: { docs, notes } }
+  return { budgets: parsed }
 }
 
-/** 读取 git HEAD 版本的 budgets.json 作为棘轮基线;无历史或历史版本坏形态时退回当前值(首次起步不误报)。 */
-function previousBudgets(repoRoot: string, current: Budgets): Budgets {
-  try {
-    const out = execSync('git show HEAD:budgets.json', { cwd: repoRoot, stdio: ['ignore', 'pipe', 'ignore'] })
-    const parsed = JSON.parse(out.toString()) as { docs?: unknown; notes?: unknown }
-    if (typeof parsed.docs !== 'number' || typeof parsed.notes !== 'number') return current
-    return { docs: parsed.docs, notes: parsed.notes }
-  } catch {
-    return current
+/** 收集全部可解析锚点的预算并取逐字段最小值;锚点版本存在但坏形态时响亮报错。 */
+function anchorBudgets(repoRoot: string): { min?: Budgets; violations: string[] } {
+  const caps: Budgets[] = []
+  const violations: string[] = []
+  for (const ref of RATCHET_REFS) {
+    const text = readFileAt(ref, 'budgets.json', repoRoot)
+    if (text === undefined) continue
+    let parsed: unknown
+    try {
+      parsed = JSON.parse(text)
+    } catch {
+      violations.push(`锚点 ${ref} 的 budgets.json 不是合法 JSON;该版本必须先修复`)
+      continue
+    }
+    if (!isBudgets(parsed)) {
+      violations.push(`锚点 ${ref} 的 budgets.json 结构不对;该版本必须先修复`)
+      continue
+    }
+    caps.push(parsed)
   }
+  const min = caps.length
+    ? { docs: Math.min(...caps.map((c) => c.docs)), notes: Math.min(...caps.map((c) => c.notes)) }
+    : undefined
+  return { min, violations }
 }
 
 function lineCount(content: string): number {
@@ -48,7 +65,7 @@ function lineCount(content: string): number {
 
 /**
  * 字数预算棘轮:docs/** 每篇 ≤ budgets.docs 行,四个生命周期目录的笔记每篇 ≤ budgets.notes 行;
- * 预算数值相对 git 上一版只许持平或变小。AGENTS.md 体系与 .agents/skills/ 不在管辖范围。
+ * 预算数值相对全部棘轮锚点(origin/main、HEAD)只许持平或变小。AGENTS.md 体系与 .agents/skills/ 不在管辖范围。
  * @param repoRoot 仓库根目录
  * @returns 中文违规清单,空数组表示通过
  */
@@ -66,7 +83,7 @@ export async function check(repoRoot: string): Promise<string[]> {
   for (const file of walkMd(docsDir)) {
     const n = lineCount(readFileSync(file, 'utf8'))
     if (n > budgets.docs) {
-      violations.push(`${relative(repoRoot, file)} ${n} 行,超过 docs 预算 ${budgets.docs} 行;写短,或先在 PR 说明里论证收紧预算`)
+      violations.push(`${relative(repoRoot, file)} ${n} 行,超过 docs 预算 ${budgets.docs} 行;写短或拆分文件`)
     }
   }
   for (const file of lifecycleNotes) {
@@ -76,11 +93,12 @@ export async function check(repoRoot: string): Promise<string[]> {
     }
   }
 
-  const prev = previousBudgets(repoRoot, budgets)
-  if (budgets.docs > prev.docs || budgets.notes > prev.notes) {
-    violations.push(`预算只许收紧:docs ${prev.docs}→${budgets.docs},notes ${prev.notes}→${budgets.notes};放宽预算需要新决策笔记并在评审中说明`)
+  const { min: prev, violations: anchorViolations } = anchorBudgets(repoRoot)
+  violations.push(...anchorViolations)
+  if (prev && (budgets.docs > prev.docs || budgets.notes > prev.notes)) {
+    violations.push(`预算只许收紧:docs ${prev.docs}→${budgets.docs},notes ${prev.notes}→${budgets.notes};预算不可放宽——确需放宽由维护者跳过本门禁并留决策笔记`)
   }
-  return violations
+  return [...new Set(violations)]
 }
 
 if (isMain(import.meta.url)) await runMain(check)

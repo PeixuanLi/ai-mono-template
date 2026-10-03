@@ -1,8 +1,8 @@
-import { execSync } from 'node:child_process'
 import { createHash } from 'node:crypto'
 import { existsSync, readFileSync, statSync } from 'node:fs'
 import { join, relative } from 'node:path'
 import { isMain, runMain } from './cli.ts'
+import { readFileAt, RATCHET_REFS } from './git-util.ts'
 import { walkMd } from './fs-util.ts'
 
 interface Manifest {
@@ -38,17 +38,28 @@ function loadManifest(archivedDir: string): { manifest?: Manifest; violation?: s
   return { manifest }
 }
 
-/** 读取 git HEAD 版本的 manifest 作为棘轮基线;无 git 历史、文件不存在或历史版本坏形态时返回空基线。 */
-function previousManifest(repoRoot: string): Manifest {
-  try {
-    const out = execSync('git show HEAD:.agents/notes/archived/manifest.json', {
-      cwd: repoRoot,
-      stdio: ['ignore', 'pipe', 'ignore'],
-    })
-    return validateManifest(JSON.parse(out.toString())) ?? { files: {} }
-  } catch {
-    return { files: {} }
+/** 收集全部锚点(origin/main、HEAD)上可解析的 manifest;锚点版本存在但坏形态时响亮报错。 */
+function anchorManifests(repoRoot: string): { manifests: Manifest[]; violations: string[] } {
+  const manifests: Manifest[] = []
+  const violations: string[] = []
+  for (const ref of RATCHET_REFS) {
+    const text = readFileAt(ref, '.agents/notes/archived/manifest.json', repoRoot)
+    if (text === undefined) continue
+    let parsed: unknown
+    try {
+      parsed = JSON.parse(text)
+    } catch {
+      violations.push(`锚点 ${ref} 的 manifest.json 不是合法 JSON;该版本必须先修复`)
+      continue
+    }
+    const manifest = validateManifest(parsed)
+    if (!manifest) {
+      violations.push(`锚点 ${ref} 的 manifest.json 结构不对;该版本必须先修复`)
+      continue
+    }
+    manifests.push(manifest)
   }
+  return { manifests, violations }
 }
 
 /**
@@ -88,13 +99,16 @@ export async function check(repoRoot: string): Promise<string[]> {
     }
   }
 
-  const prev = previousManifest(repoRoot)
-  for (const [name, sha] of Object.entries(prev.files)) {
-    if (manifest.files[name] !== sha) {
-      violations.push(`manifest 中 ${name} 的登记被修改或删除;manifest 只增不改`)
+  const { manifests: anchors, violations: anchorViolations } = anchorManifests(repoRoot)
+  violations.push(...anchorViolations)
+  for (const prev of anchors) {
+    for (const [name, sha] of Object.entries(prev.files)) {
+      if (manifest.files[name] !== sha) {
+        violations.push(`manifest 中 ${name} 的登记被修改或删除;manifest 只增不改`)
+      }
     }
   }
-  return violations
+  return [...new Set(violations)]
 }
 
 if (isMain(import.meta.url)) await runMain(check)
