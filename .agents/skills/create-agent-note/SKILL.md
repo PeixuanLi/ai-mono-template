@@ -14,7 +14,7 @@ description: 做出有真取舍的技术决策、准备把决策写入 .agents/n
 2. 状态与目录一致:提案期放 proposed/,随实现 PR 移入 implemented/ 并同步状态行。
 3. 写"## 考虑过的替代方案":每个被放弃的方案一句为什么放弃。
 4. 在 .agents/notes/README.md 索引追加条目。
-5. 运行 `pnpm run verify:notes` 确认格式合规。
+5. 运行 `pnpm run verify:notes` 确认格式合规(含互链目标存在性)。
 
 ## 禁止
 
