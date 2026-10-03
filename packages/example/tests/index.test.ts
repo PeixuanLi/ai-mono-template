@@ -4,7 +4,7 @@ import { err, ok, parseJsonObject } from '../src/index.ts'
 /**
  * 世界验证正例:每个断言都针对外部可观察行为(返回值的结构与内容)。
  * 反例(自述式,禁止):
- *   expect(parseJsonObject).toHaveProperty('name')   // 断言实现的形状,不是行为
+ *   expect(parseJsonObject).toHaveProperty('name')   // 通过但什么都没验证:断言实现的形状,不是行为
  *   const spy = vi.fn(parseJsonObject); spy('{}')    // 只断言 mock 被调用,
  *   expect(spy).toHaveBeenCalled()                    // 而不断言真实返回值
  * 判据:重构实现(改名、换算法)不应弄红行为测试;弄红了说明它断言的是自述。

@@ -10,7 +10,7 @@ pnpm run test         # vitest 全量(含门禁自测)
 pnpm run typecheck    # TypeScript 严格检查
 pnpm run lint         # eslint
 pnpm run verify       # 全部门禁(CI 同款)
-pnpm run verify:fast  # 提交前快查(亚秒级)
+pnpm run verify:fast  # 提交前快查(约 1~2 秒)
 pnpm run verify:docs  # 文档/笔记字数预算
 pnpm run verify:notes # 笔记格式 + 归档冻结
 pnpm run scope        # 按当前改动推荐最小检查集
@@ -31,5 +31,5 @@ pnpm run build        # 构建全部包
 - **凡被违反两次的约定,升级为门禁**:把约定变成会让 CI 变红的命令,流程见 `.agents/skills/add-gate/SKILL.md`。
 - **stack PR**:依赖式 PR 用 GitHub 原生 stack;重写必带 `--force-with-lease`。见 [docs/workflow.md](docs/workflow.md)。
 - **TODO 语义**:`FIXME` = 有 bug 待修;`TODO` = 缺功能;`XXX` = 危险绕行。
-- **文件以恰好一个换行符结尾**(pre-commit 的 `git diff --cached --check` 把关)。
+- **不引入行尾空白与末尾多余空行**(pre-commit 的 `git diff --cached --check` 把关);文件以恰好一个换行结尾由评审把关。
 - **ESM only**:全仓 `"type": "module"`;相对导入用 `.ts` 后缀;跨包用包名。

@@ -1,5 +1,6 @@
 packages:
   - packages/*
+# lefthook 关 false:钩子由根 package.json 的 prepare 显式安装,postinstall 冗余;勿翻回 true。
 allowBuilds:
   esbuild: true
   lefthook: false
