@@ -160,7 +160,7 @@ export async function bootstrap(opts: BootstrapOptions): Promise<void> {
     throw new Error('门禁未全绿;修复上述违规后重跑 pnpm bootstrap(幂等)')
   }
 
-  log('⑧ 完成。先把 README 首行、package.json 的 name、AGENTS.md 首段的"模板"表述换成你的项目,再走 README「第 1 周」的完整闭环。')
+  log('⑧ 完成。先把 README 开头(首行标题与"基于 ai-mono-template"句)、package.json 的 name、AGENTS.md 首段的"模板"表述换成你的项目,再走 README「第 1 周」的完整闭环。')
 }
 
 if (isMain(import.meta.url)) {
