@@ -8,6 +8,9 @@ on:
         description: 要发布的 tag(如 v0.1.0)
         required: true
 
+permissions:
+  contents: read
+
 jobs:
   release:
     runs-on: ubuntu-latest
@@ -22,7 +25,7 @@ jobs:
           node-version: 22
           cache: pnpm
       - run: pnpm install --frozen-lockfile
-      - name: 校验 tag 已合入 main
+      - name: 校验 tag 不落后于 main(含 main 全部提交)
         run: git merge-base --is-ancestor origin/main HEAD
       - run: pnpm run verify
       - run: pnpm run build
