@@ -20,7 +20,7 @@ packages/               工作区包(@tmpl/<name>)
 
 ## 门禁体系
 
-六个 verify-*.ts 由 run-gates 聚合:fast → pre-commit;all → CI;docs/notes → 手动范围词。
+四个 verify-*.ts 由 run-gates 聚合:fast → pre-commit;all → CI;docs/notes → 手动范围词。
 新增门禁的流程见 .agents/skills/add-gate/SKILL.md。
 
 ## 设计决策
