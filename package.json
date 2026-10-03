@@ -1,0 +1,30 @@
+{
+  "name": "ai-mono-template",
+  "private": true,
+  "type": "module",
+  "engines": {
+    "node": ">=22.19"
+  },
+  "scripts": {
+    "test": "vitest run",
+    "typecheck": "tsc --noEmit -p tsconfig.json",
+    "lint": "eslint .",
+    "verify": "tsx scripts/gates/run-gates.ts --mode all",
+    "verify:fast": "tsx scripts/gates/run-gates.ts --mode fast",
+    "verify:docs": "tsx scripts/gates/run-gates.ts --mode docs",
+    "verify:notes": "tsx scripts/gates/run-gates.ts --mode notes",
+    "scope": "tsx scripts/gates/change-scope.ts",
+    "bootstrap": "tsx scripts/bootstrap.ts",
+    "build": "pnpm -r build"
+  },
+  "devDependencies": {
+    "@eslint/js": "^9.20.0",
+    "@types/node": "^22.13.0",
+    "eslint": "^9.20.0",
+    "lefthook": "^1.10.0",
+    "tsx": "^4.19.0",
+    "typescript": "^5.7.0",
+    "typescript-eslint": "^8.24.0",
+    "vitest": "^3.0.0"
+  }
+}
