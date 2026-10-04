@@ -6,7 +6,7 @@
 
 ```text
 AGENTS.md / CLAUDE.md   常驻规则(单一来源,symlink 分发)
-docs/                   现状文档(what/how):架构、测试、工作流、写作
+docs/                   上手指引与现状文档:快速上手、架构、测试、工作流、写作
 .agents/skills/         按需流程(触发式加载)
 .agents/notes/          决策笔记(why/why-not),四态生命周期
 scripts/gates/          门禁脚本(执法)+ 行为测试

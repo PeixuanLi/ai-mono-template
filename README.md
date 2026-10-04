@@ -5,6 +5,8 @@
 
 ## 第 0 天:初始化
 
+完整步骤与预期见 [docs/quickstart.md](docs/quickstart.md)。
+
 ```sh
 pnpm install
 pnpm bootstrap            # 可选:--scope @你的组织 / --no-example
